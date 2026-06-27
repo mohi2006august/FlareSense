@@ -1,6 +1,10 @@
 # Physics-informed Bayesian Cross-Attention Mamba Network
 ## Solar Flare Forecasting & Nowcasting using Aditya-L1 SoLEXS + HEL1OS
 
+---
+
+![Python](https://img.shields.io/badge/Python-3.10+-007ec6) ![PyTorch](https://img.shields.io/badge/PyTorch-2.x-e34f26) ![Status](https://img.shields.io/badge/Status-In%20Development-dfb317)
+
 ## Quick Summary
 PBCAT-M is a deep learning model that predicts solar flares before they happen, using data from India's own Aditya-L1 satellite. It is designed to run in real-time at ISRO's Space Weather Monitoring Center and give operators actionable, confidence-rated alerts.
 
