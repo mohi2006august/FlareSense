@@ -36,12 +36,17 @@ class PBCATDataset(Dataset):
         # We need independent preprocessors for each channel because their statistical 
         # means and standard deviations (for z-scoring) are completely different.
         self.solexs_preprocessor = DataPreprocessor()
+        self.solexs_cclass_preprocessor = DataPreprocessor()
         self.helios_preprocessor = DataPreprocessor()
         
         # Pre-fit the preprocessors on the entire dataset to get global mean/std
         # This solves the issue of "stats computed on mock/batch"
         print("Fitting global Z-score statistics on the full dataset...")
         self.solexs_preprocessor.fit_transform_zscore(self.df['SOLEXS_FLUX'].dropna())
+        
+        if 'SOLEXS_FLUX_1_5KEV' in self.df.columns:
+            self.solexs_cclass_preprocessor.fit_transform_zscore(self.df['SOLEXS_FLUX_1_5KEV'].dropna())
+            
         self.helios_preprocessor.fit_transform_zscore(self.df['HELIOS_FLUX'].dropna())
         
         # Calculate how many full sliding windows we can fit
@@ -70,27 +75,39 @@ class PBCATDataset(Dataset):
         window_start = chunk['UTC_TIME'].iloc[0]
         window_end = chunk['UTC_TIME'].iloc[-1]
         
-        # 1. Preprocess SoLEXS
+        # 1. Preprocess SoLEXS Total
         solexs_processed = self.solexs_preprocessor.process_channel(chunk, flux_column='SOLEXS_FLUX', is_training=False)
         solexs_flux = solexs_processed['SOLEXS_FLUX'].values
         solexs_mask = solexs_processed['is_gap'].values
         
-        # 2. Preprocess HEL1OS
+        # 2. Preprocess SoLEXS C-Class (1-5 keV)
+        if 'SOLEXS_FLUX_1_5KEV' in chunk.columns:
+            cclass_processed = self.solexs_cclass_preprocessor.process_channel(chunk, flux_column='SOLEXS_FLUX_1_5KEV', is_training=False)
+            cclass_flux = cclass_processed['SOLEXS_FLUX_1_5KEV'].values
+            cclass_mask = cclass_processed['is_gap'].values
+        else:
+            cclass_flux = solexs_flux
+            cclass_mask = solexs_mask
+        
+        # 3. Preprocess HEL1OS
         helios_processed = self.helios_preprocessor.process_channel(chunk, flux_column='HELIOS_FLUX', is_training=False)
         helios_flux = helios_processed['HELIOS_FLUX'].values
         helios_mask = helios_processed['is_gap'].values
         
-        # 3. Generate Label for this specific 6-hour window
+        # 4. Generate Label for this specific 6-hour window
         flare_class, onset_time = self.label_gen.get_label_for_window(window_start, window_end)
         
-        # 4. Convert to PyTorch Tensors
+        # 5. Convert to PyTorch Tensors
         # Add channel dimension (1, 21600)
         s_tensor = torch.tensor(solexs_flux, dtype=torch.float32).unsqueeze(0)
         s_mask = torch.tensor(solexs_mask, dtype=torch.bool)
+        
+        c_tensor = torch.tensor(cclass_flux, dtype=torch.float32).unsqueeze(0)
+        c_mask = torch.tensor(cclass_mask, dtype=torch.bool)
         
         h_tensor = torch.tensor(helios_flux, dtype=torch.float32).unsqueeze(0)
         h_mask = torch.tensor(helios_mask, dtype=torch.bool)
         
         label_tensor = torch.tensor([flare_class, onset_time], dtype=torch.float32)
         
-        return s_tensor, s_mask, h_tensor, h_mask, label_tensor
+        return s_tensor, s_mask, c_tensor, c_mask, h_tensor, h_mask, label_tensor

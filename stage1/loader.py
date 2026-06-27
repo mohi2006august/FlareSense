@@ -25,9 +25,27 @@ class FitsDataLoader:
             data = hdul[1].data
             
             # SoLEXS FITS contains TIME and COUNTS columns
+            # COUNTS can be 1D (lightcurve) or 2D (spectral: time x channels)
+            counts = data['COUNTS']
+            
+            if counts.ndim == 2:
+                # Spectral data: sum all channels for total flux
+                total_flux = np.sum(counts, axis=1)
+                
+                # Extract 1-5 keV band. (Assuming channels 10 to 50 map to 1-5 keV for this example)
+                # In production, this channel mapping should come from the SoLEXS calibration matrix (RMF)
+                flux_1_5 = np.sum(counts[:, 10:50], axis=1)
+            else:
+                # 1D Lightcurve data: we only have total flux. 
+                # We duplicate it to FLUX_1_5KEV so the pipeline doesn't break, but issue a warning.
+                print("WARNING: Loaded a 1D lightcurve file. Cannot extract 1-5 keV band. Duplicating total flux.")
+                total_flux = counts
+                flux_1_5 = counts
+                
             df = pd.DataFrame({
                 'TIME': data['TIME'],
-                'FLUX': data['COUNTS']
+                'FLUX': total_flux,
+                'FLUX_1_5KEV': flux_1_5
             })
             
         if gti_file:

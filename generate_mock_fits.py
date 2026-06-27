@@ -3,27 +3,33 @@ import numpy as np
 from astropy.io import fits
 
 def generate_mock_fits():
-    # 1. Generate SoLEXS mock FITS (.li)
-    print("Generating SoLEXS mock FITS file...")
+    # 1. Generate SoLEXS mock Spectral FITS (.pi)
+    print("Generating SoLEXS mock Spectral FITS file...")
     solexs_dir = "data/raw/SOLEXS/SDD2"
     os.makedirs(solexs_dir, exist_ok=True)
     
     # 86400 rows = 24 hours of 1-sec data
     n_rows = 86400
+    n_channels = 256 # 256 energy channels
+    
     # Time: seconds from epoch
     solexs_time = np.arange(n_rows, dtype=np.float64)
-    # Flux: some random values
-    solexs_flux = np.random.normal(loc=50.0, scale=5.0, size=n_rows)
+    # Flux: 2D array [time, channels]
+    solexs_counts = np.random.normal(loc=1.0, scale=0.1, size=(n_rows, n_channels))
+    
+    # Simulate a C-class flare signature specifically in channels 10-50
+    # Let's add a spike between t=1000 and t=1500 in those channels
+    solexs_counts[1000:1500, 10:50] += 5.0
     
     col1 = fits.Column(name='TIME', format='D', array=solexs_time)
-    col2 = fits.Column(name='COUNTS', format='D', array=solexs_flux)
+    col2 = fits.Column(name='COUNTS', format=f'{n_channels}D', array=solexs_counts)
     cols = fits.ColDefs([col1, col2])
     
     hdu1 = fits.PrimaryHDU()
-    hdu2 = fits.BinTableHDU.from_columns(cols, name='RATE')
+    hdu2 = fits.BinTableHDU.from_columns(cols, name='SPECTRUM')
     
     hdul_solexs = fits.HDUList([hdu1, hdu2])
-    solexs_path = os.path.join(solexs_dir, "datsets2.li")
+    solexs_path = os.path.join(solexs_dir, "dataset3.pi")
     hdul_solexs.writeto(solexs_path, overwrite=True)
     print(f"Created: {solexs_path}")
     

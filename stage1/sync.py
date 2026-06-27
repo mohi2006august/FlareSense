@@ -30,8 +30,11 @@ class TimeSynchronizer:
         time_array_solexs = np.array(solexs_clean['TIME'].values, dtype=np.float64)
         solexs_td = TimeDelta(time_array_solexs, format='sec')
         solexs_clean['UTC_TIME'] = (self.solexs_epoch + solexs_td).datetime
-        solexs_clean = solexs_clean.rename(columns={'FLUX': 'SOLEXS_FLUX'})
-        solexs_clean = solexs_clean[['UTC_TIME', 'SOLEXS_FLUX']]
+        solexs_clean = solexs_clean.rename(columns={'FLUX': 'SOLEXS_FLUX', 'FLUX_1_5KEV': 'SOLEXS_FLUX_1_5KEV'})
+        if 'SOLEXS_FLUX_1_5KEV' in solexs_clean.columns:
+            solexs_clean = solexs_clean[['UTC_TIME', 'SOLEXS_FLUX', 'SOLEXS_FLUX_1_5KEV']]
+        else:
+            solexs_clean = solexs_clean[['UTC_TIME', 'SOLEXS_FLUX']]
         
         # 2. Standardize HEL1OS time (assuming TIME is MJD)
         helios_clean = df_helios.copy()

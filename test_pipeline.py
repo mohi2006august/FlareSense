@@ -23,7 +23,7 @@ def test_pipeline():
     df_helios = loader.load_helios(helios_file)
     df_helios = pd.DataFrame({col: df_helios[col].values.astype(np.float64) for col in df_helios.columns})
 
-    solexs_file = "SOLEXS/SDD2/datsets2.li"
+    solexs_file = "SOLEXS/SDD2/dataset3.pi"
     print(f"Loading {solexs_file}...")
     df_solexs = loader.load_solexs(solexs_file)
     df_solexs = pd.DataFrame({col: df_solexs[col].values.astype(np.float64) for col in df_solexs.columns})
@@ -62,10 +62,11 @@ def test_pipeline():
     # 6. Fetch a Batch
     print("\nFetching first batch from DataLoader...")
     batch = next(iter(dataloader))
-    s_tensor, s_mask, h_tensor, h_mask, labels = batch
+    s_tensor, s_mask, c_tensor, c_mask, h_tensor, h_mask, labels = batch
     
     print("\n=== Batch Shapes ===")
-    print(f"SoLEXS Tensor: {s_tensor.shape} (Expected: [4, 1, 21600])")
+    print(f"SoLEXS Total Tensor: {s_tensor.shape} (Expected: [4, 1, 21600])")
+    print(f"SoLEXS 1-5keV Tensor: {c_tensor.shape} (Expected: [4, 1, 21600])")
     print(f"SoLEXS Mask:   {s_mask.shape} (Expected: [4, 21600])")
     print(f"HEL1OS Tensor: {h_tensor.shape} (Expected: [4, 1, 21600])")
     print(f"Labels:        {labels.shape} (Expected: [4, 2])")
