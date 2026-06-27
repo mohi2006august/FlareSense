@@ -20,33 +20,42 @@ class FitsDataLoader:
             raise FileNotFoundError(f"SoLEXS data file not found: {file_path}")
             
         print(f"Loading SoLEXS data from {file_path}")
-        with fits.open(file_path) as hdul:
-            # Typically lightcurve data is in the first extension
-            data = hdul[1].data
-            
-            # SoLEXS FITS contains TIME and COUNTS columns
-            # COUNTS can be 1D (lightcurve) or 2D (spectral: time x channels)
-            counts = data['COUNTS']
-            
-            if counts.ndim == 2:
-                # Spectral data: sum all channels for total flux
-                total_flux = np.sum(counts, axis=1)
-                
-                # Extract 1-5 keV band. (Assuming channels 10 to 50 map to 1-5 keV for this example)
-                # In production, this channel mapping should come from the SoLEXS calibration matrix (RMF)
-                flux_1_5 = np.sum(counts[:, 10:50], axis=1)
-            else:
-                # 1D Lightcurve data: we only have total flux. 
-                # We duplicate it to FLUX_1_5KEV so the pipeline doesn't break, but issue a warning.
-                print("WARNING: Loaded a 1D lightcurve file. Cannot extract 1-5 keV band. Duplicating total flux.")
-                total_flux = counts
-                flux_1_5 = counts
+        
+        if str(file_path).endswith('.csv'):
+            df_raw = pd.read_csv(file_path)
+            # AL1_SLX_cleaned.csv has: time_s, counts, (and now counts_1_5kev)
+            flux_1_5 = df_raw['counts_1_5kev'] if 'counts_1_5kev' in df_raw.columns else df_raw['counts']
+            if 'counts_1_5kev' not in df_raw.columns:
+                print("WARNING: Loaded a 1D CSV lightcurve. Cannot extract 1-5 keV band. Duplicating total flux.")
                 
             df = pd.DataFrame({
-                'TIME': data['TIME'],
-                'FLUX': total_flux,
+                'TIME': df_raw['time_s'],
+                'FLUX': df_raw['counts'],
                 'FLUX_1_5KEV': flux_1_5
             })
+        else:
+            with fits.open(file_path) as hdul:
+                data = hdul[1].data
+                counts = data['COUNTS']
+                
+                if counts.ndim == 2:
+                    total_flux = np.sum(counts, axis=1)
+                    flux_1_5 = np.sum(counts[:, 10:50], axis=1)
+                else:
+                    print("WARNING: Loaded a 1D lightcurve file. Cannot extract 1-5 keV band. Duplicating total flux.")
+                    total_flux = counts
+                    flux_1_5 = counts
+                    
+                df = pd.DataFrame({
+                    'TIME': data['TIME'],
+                    'FLUX': total_flux,
+                    'FLUX_1_5KEV': flux_1_5
+                })
+        
+        # Standardize time to pandas datetime if we can detect the format
+        if str(file_path).endswith('.csv'):
+            # UNIX epoch time in seconds
+            df['TIME'] = pd.to_datetime(df['TIME'], unit='s')
             
         if gti_file:
             self._apply_gti(df, gti_file)
@@ -62,15 +71,25 @@ class FitsDataLoader:
             raise FileNotFoundError(f"HEL1OS data file not found: {file_path}")
             
         print(f"Loading HEL1OS data from {file_path}")
-        with fits.open(file_path) as hdul:
-            data = hdul[1].data
-            
-            # HEL1OS FITS contains MJD, ISOT, CTR (Count Rate), STAT_ERR
+        
+        if str(file_path).endswith('.csv'):
+            df_raw = pd.read_csv(file_path)
+            # HLS_cleaned.csv has: mjd, iso_time, count_rate_per_s, stat_error
             df = pd.DataFrame({
-                'TIME': data['MJD'], # We will convert this to a common format later if needed
-                'FLUX': data['CTR'],
-                'ERROR': data['STAT_ERR']
+                'TIME': pd.to_datetime(df_raw['iso_time']),
+                'FLUX': df_raw['count_rate_per_s'],
+                'ERROR': df_raw['stat_error']
             })
+        else:
+            with fits.open(file_path) as hdul:
+                data = hdul[1].data
+                
+                # HEL1OS FITS contains MJD, ISOT, CTR (Count Rate), STAT_ERR
+                df = pd.DataFrame({
+                    'TIME': data['MJD'], # We will convert this to a common format later if needed
+                    'FLUX': data['CTR'],
+                    'ERROR': data['STAT_ERR']
+                })
             
         if gti_file:
             self._apply_gti(df, gti_file)

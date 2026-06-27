@@ -27,9 +27,14 @@ class TimeSynchronizer:
         # Convert seconds to days since Astropy TimeDelta expects days if float, or explicitly use sec
         # The safest way is to use astropy.time.TimeDelta
         from astropy.time import TimeDelta
-        time_array_solexs = np.array(solexs_clean['TIME'].values, dtype=np.float64)
-        solexs_td = TimeDelta(time_array_solexs, format='sec')
-        solexs_clean['UTC_TIME'] = (self.solexs_epoch + solexs_td).datetime
+        
+        if pd.api.types.is_datetime64_any_dtype(solexs_clean['TIME']):
+            solexs_clean['UTC_TIME'] = solexs_clean['TIME']
+        else:
+            time_array_solexs = np.array(solexs_clean['TIME'].values, dtype=np.float64)
+            solexs_td = TimeDelta(time_array_solexs, format='sec')
+            solexs_clean['UTC_TIME'] = (self.solexs_epoch + solexs_td).datetime
+            
         solexs_clean = solexs_clean.rename(columns={'FLUX': 'SOLEXS_FLUX', 'FLUX_1_5KEV': 'SOLEXS_FLUX_1_5KEV'})
         if 'SOLEXS_FLUX_1_5KEV' in solexs_clean.columns:
             solexs_clean = solexs_clean[['UTC_TIME', 'SOLEXS_FLUX', 'SOLEXS_FLUX_1_5KEV']]
@@ -38,9 +43,13 @@ class TimeSynchronizer:
         
         # 2. Standardize HEL1OS time (assuming TIME is MJD)
         helios_clean = df_helios.copy()
-        time_array_helios = np.array(helios_clean['TIME'].values, dtype=np.float64)
-        helios_astropy = Time(time_array_helios, format='mjd', scale='utc')
-        helios_clean['UTC_TIME'] = helios_astropy.datetime
+        if pd.api.types.is_datetime64_any_dtype(helios_clean['TIME']):
+            helios_clean['UTC_TIME'] = helios_clean['TIME']
+        else:
+            time_array_helios = np.array(helios_clean['TIME'].values, dtype=np.float64)
+            helios_astropy = Time(time_array_helios, format='mjd', scale='utc')
+            helios_clean['UTC_TIME'] = helios_astropy.datetime
+            
         helios_clean = helios_clean.rename(columns={'FLUX': 'HELIOS_FLUX', 'ERROR': 'HELIOS_ERROR'})
         helios_clean = helios_clean[['UTC_TIME', 'HELIOS_FLUX', 'HELIOS_ERROR']]
         

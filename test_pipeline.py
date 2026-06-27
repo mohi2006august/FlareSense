@@ -18,15 +18,13 @@ def test_pipeline():
     loader = FitsDataLoader("data/raw")
     
     # 1. Load Data
-    helios_file = "HEL1OS/sdte/lightcurve_cdte1.fits"
+    helios_file = "HEL1OS/HLS_cleaned.csv"
     print(f"Loading {helios_file}...")
     df_helios = loader.load_helios(helios_file)
-    df_helios = pd.DataFrame({col: df_helios[col].values.astype(np.float64) for col in df_helios.columns})
 
-    solexs_file = "SOLEXS/SDD2/dataset3.pi"
+    solexs_file = "SOLEXS/AL1_SLX_cleaned.csv"
     print(f"Loading {solexs_file}...")
     df_solexs = loader.load_solexs(solexs_file)
-    df_solexs = pd.DataFrame({col: df_solexs[col].values.astype(np.float64) for col in df_solexs.columns})
 
     # 2. Time Synchronization
     print("\nRunning Time Synchronizer...")
@@ -48,19 +46,20 @@ def test_pipeline():
     
     # INJECT A GAP IN Aditya-L1 DATA TO TEST FALLBACK
     print("\nInjecting a 1-hour eclipse gap in Aditya-L1 master timeline...")
-    gap_start = 5000
-    gap_end = 5000 + 3600 # 1 hour
-    master_df.loc[gap_start:gap_end, 'SOLEXS_FLUX'] = np.nan
-    master_df.loc[gap_start:gap_end, 'SOLEXS_FLUX_1_5KEV'] = np.nan
-    master_df.loc[gap_start:gap_end, 'HELIOS_FLUX'] = np.nan
+    gap_start = 500
+    gap_end = 500 + 3600 # 1 hour
+    if gap_end < len(master_df):
+        master_df.loc[gap_start:gap_end, 'SOLEXS_FLUX'] = np.nan
+        master_df.loc[gap_start:gap_end, 'SOLEXS_FLUX_1_5KEV'] = np.nan
+        master_df.loc[gap_start:gap_end, 'HELIOS_FLUX'] = np.nan
     
     # 4. Create Mock Flare Catalog (CSV)
     # We will simulate a M-class flare in our window
     print("\nGenerating Mock GOES Flare Catalog...")
     mock_catalog = pd.DataFrame({
-        'start_time': ['2023-01-01 02:00:00', '2023-01-01 14:00:00'],
-        'peak_time':  ['2023-01-01 02:15:00', '2023-01-01 14:30:00'],
-        'end_time':   ['2023-01-01 03:00:00', '2023-01-01 15:00:00'],
+        'start_time': ['2026-06-24 12:30:00', '2026-06-24 16:00:00'],
+        'peak_time':  ['2026-06-24 12:45:00', '2026-06-24 16:30:00'],
+        'end_time':   ['2026-06-24 13:00:00', '2026-06-24 17:00:00'],
         'class':      ['M2.1', 'C1.5']
     })
     catalog_path = "data/raw/mock_goes_catalog.csv"

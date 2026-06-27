@@ -6,30 +6,25 @@ from stage1.sync import TimeSynchronizer
 from astropy.io import fits
 
 def main():
+    print("Testing the pipeline on REAL datasets")
+    print("-" * 50)
+    
     loader = FitsDataLoader("data/raw")
     
-    helios_file = "HEL1OS/sdte/lightcurve_cdte1.fits"
-    print(f"Loading {helios_file}...")
     try:
+        # Load HEL1OS CSV
+        helios_file = "HEL1OS/HLS_cleaned.csv"
         df_helios = loader.load_helios(helios_file)
-        # Fix endianness from FITS
-        df_helios = pd.DataFrame({col: df_helios[col].values.astype(np.float64) for col in df_helios.columns})
-        print("HEL1OS DataFrame:")
-        print(df_helios.head())
-    except Exception as e:
-        print(f"Failed to load HEL1OS: {e}")
-        return
-
-    solexs_file = "SOLEXS/SDD2/datsets2.li"
-    print(f"\nLoading {solexs_file}...")
-    try:
+        
+        # Load SoLEXS CSV
+        solexs_file = "SOLEXS/AL1_SLX_cleaned.csv"
         df_solexs = loader.load_solexs(solexs_file)
-        # Fix endianness from FITS
-        df_solexs = pd.DataFrame({col: df_solexs[col].values.astype(np.float64) for col in df_solexs.columns})
+        
         print("SoLEXS DataFrame:")
         print(df_solexs.head())
+        
     except Exception as e:
-        print(f"Failed to load SoLEXS: {e}")
+        print(f"Failed to load datasets: {e}")
         return
 
     from stage1.pipeline import DataPreprocessor
