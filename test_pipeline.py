@@ -34,7 +34,27 @@ def test_pipeline():
     master_df = sync.sync(df_solexs, df_helios)
     print(f"Synchronized Master DataFrame Shape: {master_df.shape}")
     
-    # 3. Create Mock Flare Catalog (CSV)
+    # 3. Create Mock GOES Fallback Data (CSV)
+    print("\nGenerating Mock GOES Fallback Data...")
+    goes_time = pd.date_range(start=master_df['UTC_TIME'].min(), end=master_df['UTC_TIME'].max(), freq='1s')
+    goes_flux = np.random.normal(loc=1.0, scale=0.1, size=len(goes_time))
+    # GOES is typically in Watts/m^2 (e.g. 1e-7), but we just use arbitrary numbers to test scaling
+    mock_goes = pd.DataFrame({'time_tag': goes_time, 'flux': goes_flux})
+    goes_path = "data/raw/mock_goes_flux.csv"
+    mock_goes.to_csv(goes_path, index=False)
+    
+    # Load GOES via loader
+    df_goes = loader.load_goes("mock_goes_flux.csv")
+    
+    # INJECT A GAP IN Aditya-L1 DATA TO TEST FALLBACK
+    print("\nInjecting a 1-hour eclipse gap in Aditya-L1 master timeline...")
+    gap_start = 5000
+    gap_end = 5000 + 3600 # 1 hour
+    master_df.loc[gap_start:gap_end, 'SOLEXS_FLUX'] = np.nan
+    master_df.loc[gap_start:gap_end, 'SOLEXS_FLUX_1_5KEV'] = np.nan
+    master_df.loc[gap_start:gap_end, 'HELIOS_FLUX'] = np.nan
+    
+    # 4. Create Mock Flare Catalog (CSV)
     # We will simulate a M-class flare in our window
     print("\nGenerating Mock GOES Flare Catalog...")
     mock_catalog = pd.DataFrame({
@@ -49,11 +69,11 @@ def test_pipeline():
     label_gen = FlareLabelGenerator(catalog_path)
     print("Label Generator initialized successfully.")
     
-    # 4. Initialize PyTorch Dataset
+    # 6. Initialize PyTorch Dataset
     print("\nInitializing PBCATDataset...")
     # We have exactly 24 hours of mock data.
     # 6-hour window, 30-min stride -> ~37 windows
-    dataset = PBCATDataset(master_df, label_gen, window_size_sec=21600, stride_sec=1800)
+    dataset = PBCATDataset(master_df, label_gen, goes_fallback_df=df_goes, window_size_sec=21600, stride_sec=1800)
     print(f"Dataset created with {len(dataset)} sliding windows.")
     
     # 5. Initialize DataLoader

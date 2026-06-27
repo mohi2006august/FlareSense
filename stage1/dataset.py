@@ -6,6 +6,7 @@ from typing import Tuple
 
 from stage1.pipeline import DataPreprocessor
 from stage1.labels import FlareLabelGenerator
+from stage1.fallback import DataPatcher
 
 class PBCATDataset(Dataset):
     """
@@ -17,18 +18,27 @@ class PBCATDataset(Dataset):
         self, 
         synchronized_df: pd.DataFrame, 
         label_generator: FlareLabelGenerator,
+        goes_fallback_df: pd.DataFrame = None,
         window_size_sec: int = 21600,  # 6 hours
         stride_sec: int = 1800         # 30 minutes
     ):
         """
         Args:
             synchronized_df: The DataFrame output by TimeSynchronizer 
-                             (must have UTC_TIME, SOLEXS_FLUX, HELIOS_FLUX)
             label_generator: Instance of FlareLabelGenerator for ground truths
+            goes_fallback_df: Supplementary GOES DataFrame for gap patching
             window_size_sec: Size of each sequence in seconds
             stride_sec: How far to slide the window forward for each sample
         """
         self.df = synchronized_df.sort_values('UTC_TIME').reset_index(drop=True)
+        
+        if goes_fallback_df is not None:
+            print("Running DataPatcher to fill large gaps with GOES data...")
+            patcher = DataPatcher(gap_threshold_sec=300)
+            self.df = patcher.patch_channel(self.df, goes_fallback_df, primary_col='SOLEXS_FLUX', fallback_col='GOES_FLUX')
+            if 'SOLEXS_FLUX_1_5KEV' in self.df.columns:
+                self.df = patcher.patch_channel(self.df, goes_fallback_df, primary_col='SOLEXS_FLUX_1_5KEV', fallback_col='GOES_FLUX')
+            self.df = patcher.patch_channel(self.df, goes_fallback_df, primary_col='HELIOS_FLUX', fallback_col='GOES_FLUX')
         self.label_gen = label_generator
         self.window_size = window_size_sec
         self.stride = stride_sec

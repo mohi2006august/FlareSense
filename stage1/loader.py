@@ -77,6 +77,24 @@ class FitsDataLoader:
             
         return df
         
+    def load_goes(self, file_name: str) -> pd.DataFrame:
+        """
+        Load GOES XRS supplementary data (CSV) for fallback patching.
+        Expected columns: ['time_tag', 'flux']
+        """
+        file_path = self.data_dir / file_name
+        if not file_path.exists():
+            raise FileNotFoundError(f"GOES data file not found: {file_path}")
+            
+        print(f"Loading GOES data from {file_path}")
+        df = pd.read_csv(file_path)
+        
+        # Standardize columns to match our internal format
+        df = df.rename(columns={'time_tag': 'UTC_TIME', 'flux': 'GOES_FLUX'})
+        df['UTC_TIME'] = pd.to_datetime(df['UTC_TIME'])
+        
+        return df
+        
     def _apply_gti(self, df: pd.DataFrame, gti_file: str):
         """
         Use the GTI file to mask out bad time intervals.

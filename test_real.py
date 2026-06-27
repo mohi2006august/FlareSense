@@ -32,6 +32,8 @@ def main():
         print(f"Failed to load SoLEXS: {e}")
         return
 
+    from stage1.pipeline import DataPreprocessor
+    
     print("\nRunning Time Synchronizer...")
     sync = TimeSynchronizer(solexs_epoch='2023-01-01T00:00:00')
     try:
@@ -39,13 +41,38 @@ def main():
         print("\nSynchronized Master DataFrame (First 5 rows with data):")
         print(master_df.dropna().head(5))
         
-        print("\n=== Actual FLUX values === ")
+        print("\n=== Actual Raw FLUX values === ")
         print("SoLEXS Mean Flux:", master_df['SOLEXS_FLUX'].mean())
         print("HEL1OS Mean Flux:", master_df['HELIOS_FLUX'].mean())
-        print("SoLEXS Max Flux:", master_df['SOLEXS_FLUX'].max())
-        print("HEL1OS Max Flux:", master_df['HELIOS_FLUX'].max())
+        
+        # Now CLEAN the dataset
+        print("\n=== Cleaning Dataset ===")
+        preprocessor = DataPreprocessor()
+        
+        # Fit and Transform SoLEXS
+        preprocessor.fit_transform_zscore(master_df['SOLEXS_FLUX'].dropna())
+        cleaned_solexs = preprocessor.process_channel(master_df, flux_column='SOLEXS_FLUX', is_training=False)
+        
+        # Fit and Transform HEL1OS
+        preprocessor.fit_transform_zscore(master_df['HELIOS_FLUX'].dropna())
+        cleaned_helios = preprocessor.process_channel(master_df, flux_column='HELIOS_FLUX', is_training=False)
+        
+        # Combine the cleaned columns back together
+        master_df['SOLEXS_FLUX_CLEAN'] = cleaned_solexs['SOLEXS_FLUX']
+        master_df['SOLEXS_GAP'] = cleaned_solexs['is_gap']
+        
+        master_df['HELIOS_FLUX_CLEAN'] = cleaned_helios['HELIOS_FLUX']
+        master_df['HELIOS_GAP'] = cleaned_helios['is_gap']
+        
+        print("\nCleaned Data (First 5 rows):")
+        print(master_df[['UTC_TIME', 'SOLEXS_FLUX_CLEAN', 'HELIOS_FLUX_CLEAN']].head())
+        
+        output_csv = "data/cleaned_real_dataset.csv"
+        master_df.to_csv(output_csv, index=False)
+        print(f"\nSuccessfully cleaned and saved the dataset to: {output_csv}")
+        
     except Exception as e:
-        print(f"Synchronization failed: {e}")
+        print(f"Synchronization/Cleaning failed: {e}")
 
 if __name__ == "__main__":
     main()
