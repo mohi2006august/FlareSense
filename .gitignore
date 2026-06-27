@@ -1,7 +1,5 @@
-data/
 *.fits
 *.li
 *.pi
 *.gti
-*.csv
 __pycache__/
