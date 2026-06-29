@@ -185,7 +185,7 @@ C-class flares produce flux changes of only 0.01–0.1% above background — oft
 Most models ignore C-class entirely or lump them with background noise.
 But C-class flares matter: they are 10–20x more frequent than M-class and are precursors to larger events.
 
-**Root cause**
+**Root causes**
 * C-class signal-to-noise ratio is 10–50x lower than M-class in raw flux data
 * Standard loss functions treat C-class misses the same as background misses — model ignores them
 * No model before PBCAT-M has a dedicated C-class detection branch
