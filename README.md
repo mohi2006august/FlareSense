@@ -13,7 +13,7 @@ PBCAT-M is a deep learning model that predicts solar flares before they happen, 
 * **UPDATE:** Every 30 seconds. Automatically. With no human intervention.
 * **UNIQUE:** It is the only model that tells you HOW CONFIDENT it is alongside every prediction.
 
-## What PBCAT-M uniquely solves
+## What PBCAT-M uniquely solve
 * **C-class flares:** dedicated CNN branch + weighted loss → detection rate 72–80%
 * **Extreme events:** OOD detector → silent failure rate down from 35% to 8%
 * **Data gaps:** gap tokens + GOES/STEREO fallback → degradation down from 15% to 6%
